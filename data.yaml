@@ -1,0 +1,6 @@
+path: C:/Users/Rhythm/OneDrive/Desktop/labsight_maha_attempt
+train: images/train
+val: images/val
+
+nc: 6
+names: ['Resistor', 'Capacitor', 'IC', 'Potentiometer', 'Diode', 'Three-Legged-Transistor']

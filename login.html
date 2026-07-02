@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LabSight — Login</title>
+  <link rel="icon" type="image/jpeg" href="/static/logobrowser.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    /* Login-page specific styles — not part of the main dashboard */
+    .login-bg {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+    }
+    .login-card {
+      background: var(--white);
+      border: 1px solid var(--gray-15);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      padding: 40px 36px 36px;
+      width: 100%;
+      max-width: 360px;
+    }
+    .login-logo {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .login-logo-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--gray-90);
+      letter-spacing: -0.03em;
+    }
+    .login-logo-title span { color: var(--teal); }
+    .login-logo-sub {
+      font-size: 0.75rem;
+      color: var(--gray-50);
+      margin-top: 4px;
+      font-weight: 500;
+    }
+    .login-field { margin-bottom: 14px; }
+    .login-field label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--gray-60);
+      margin-bottom: 6px;
+      letter-spacing: 0.02em;
+    }
+    .login-field input {
+      width: 100%;
+      background: var(--white);
+      border: 1px solid var(--gray-15);
+      border-radius: var(--radius);
+      padding: 9px 13px;
+      font-size: 0.85rem;
+      font-family: inherit;
+      color: var(--text);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .login-field input:focus {
+      outline: none;
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(14,165,160,0.12);
+    }
+    .login-field input:disabled {
+      background: var(--gray-07);
+      color: var(--gray-30);
+      cursor: not-allowed;
+    }
+    .login-error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+      border-radius: var(--radius);
+      padding: 9px 13px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .login-error-icon { font-size: 0.9rem; flex-shrink: 0; }
+    .btn-login {
+      width: 100%;
+      background: var(--teal);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 10px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: background 0.15s;
+    }
+    .btn-login:hover:not(:disabled) { background: var(--teal-dark); }
+    .btn-login:disabled {
+      background: var(--gray-15);
+      color: var(--gray-30);
+      cursor: not-allowed;
+    }
+    /* Countdown shown during lockout */
+    .lockout-timer {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--gray-50);
+      margin-top: 12px;
+    }
+    #countdown { font-weight: 700; color: var(--red); }
+  </style>
+</head>
+<body>
+  <div class="login-bg">
+    <div class="login-card">
+
+      <div class="login-logo">
+        <img src="/static/logo.jpg" alt="LabSight Logo" style="height:48px; width:auto; object-fit:contain; border-radius:6px; margin-bottom:10px; display:block; margin-left:auto; margin-right:auto;">
+        <div class="login-logo-title">Lab<span>Sight</span></div>
+        <div class="login-logo-sub">Administrator Login</div>
+      </div>
+
+      <!-- Error / lockout banner — only shown when error is set by Flask -->
+      {% if error %}
+      <div class="login-error">
+        <span class="login-error-icon">⚠</span>
+        <span>{{ error }}</span>
+      </div>
+      {% endif %}
+
+      <form method="POST" action="/login{% if request.args.get('next') %}?next={{ request.args.get('next') }}{% endif %}">
+
+        <div class="login-field">
+          <label for="username">Username</label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            autocomplete="username"
+            autofocus
+            {% if locked %}disabled{% endif %}
+            placeholder="Enter username here…"
+          >
+        </div>
+
+        <div class="login-field">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            autocomplete="current-password"
+            {% if locked %}disabled{% endif %}
+            placeholder="Enter password here…"
+          >
+        </div>
+
+        <button
+          type="submit"
+          class="btn-login"
+          id="loginBtn"
+          {% if locked %}disabled{% endif %}
+        >
+          Sign In
+        </button>
+
+      </form>
+
+      <!-- Countdown timer — only rendered during a lockout -->
+      {% if locked and wait %}
+      <div class="lockout-timer">
+        Try again in <span id="countdown">{{ wait }}</span>s
+      </div>
+      <script>
+        (function () {
+          let remaining = {{ wait }};
+          const el  = document.getElementById("countdown");
+          const btn = document.getElementById("loginBtn");
+          const timer = setInterval(function () {
+            remaining--;
+            if (remaining <= 0) {
+              clearInterval(timer);
+              // Reload the page so the form becomes usable again
+              window.location.reload();
+            } else {
+              el.textContent = remaining;
+            }
+          }, 1000);
+        })();
+      </script>
+      {% endif %}
+
+    </div>
+  </div>
+</body>
+</html>

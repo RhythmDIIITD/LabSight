@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LabSight</title>
+<link rel="icon" type="image/jpeg" href="/static/logobrowser.jpg">
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left" onclick="showPage('home')">
+    <img src="/static/logo.jpg" alt="LabSight Logo" class="header-logo">
+    <span class="header-title">Lab<span>Sight</span></span>
+  </div>
+  <div class="header-right">
+    <button class="btn-nav" id="nav-home"        onclick="showPage('home')">Home</button>
+    <button class="btn-nav" id="nav-records"     onclick="showPage('records')">Records</button>
+    <button class="btn-nav" id="nav-new-session" onclick="showPage('new-session')">New Session</button>
+    <div class="header-divider"></div>
+    <button class="btn-nav btn-profile" id="btn-profile-open" onclick="openProfileModal()" title="Profile & Settings">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      Profile
+    </button>
+    <div class="header-divider"></div>
+    <a href="/logout" class="btn-logout" title="Sign out">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Logout
+    </a>
+  </div>
+</div>
+
+<!-- ── Profile Modal ── -->
+<div id="profile-modal-overlay" class="profile-overlay" onclick="closeProfileModal(event)">
+  <div class="profile-modal" onclick="event.stopPropagation()">
+    <div class="profile-modal-header">
+      <span class="profile-modal-title">Profile &amp; Settings</span>
+      <button class="profile-close-btn" onclick="closeProfileModal()">&times;</button>
+    </div>
+    <div class="profile-modal-body">
+
+      <!-- Lab Details -->
+      <div class="profile-section">
+        <div class="profile-section-label">Lab Details</div>
+        <div class="profile-field-row">
+          <label class="profile-field-label">Name of Lab</label>
+          <input class="profile-field-input" type="text" id="p-lab-name" placeholder="e.g. Electronics Lab">
+        </div>
+        <div class="profile-field-row">
+          <label class="profile-field-label">Room No.</label>
+          <input class="profile-field-input" type="text" id="p-room-no" placeholder="e.g. A-204">
+        </div>
+        <div class="profile-field-row">
+          <label class="profile-field-label">Lab Engineer</label>
+          <input class="profile-field-input" type="text" id="p-lab-engineer" placeholder="e.g. Eng. Ahmed Khan">
+        </div>
+      </div>
+
+      <div class="profile-divider"></div>
+
+      <!-- Courses -->
+      <div class="profile-section">
+        <div class="profile-section-label">Courses</div>
+        <div style="font-size:0.74rem;color:var(--gray-50);margin-bottom:10px;">Changes here will reflect everywhere course titles are used.</div>
+        <div class="profile-field-row" style="align-items:flex-start;">
+          <label class="profile-field-label" style="padding-top:8px;">Active Courses</label>
+          <div style="flex:1;">
+            <div class="course-input-row" style="margin-bottom:8px;">
+              <input class="profile-field-input" type="text" id="p-new-course" placeholder="Add new course…" style="flex:1;">
+              <button class="btn-add-course" style="padding:0 14px;" onclick="profileAddCourse()">+ Add</button>
+            </div>
+            <div id="profile-course-chips" class="course-list-chips"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-divider"></div>
+
+      <!-- Change Password -->
+      <div class="profile-section">
+        <div class="profile-section-label">Change Password</div>
+        <div id="profile-pw-msg" style="display:none;"></div>
+        <div class="profile-field-row">
+          <label class="profile-field-label">Current Password</label>
+          <input class="profile-field-input" type="password" id="p-cur-pw" placeholder="Enter current password">
+        </div>
+        <div class="profile-field-row">
+          <label class="profile-field-label">New Password</label>
+          <input class="profile-field-input" type="password" id="p-new-pw" placeholder="Enter new password">
+        </div>
+        <div class="profile-field-row">
+          <label class="profile-field-label">Confirm New Password</label>
+          <input class="profile-field-input" type="password" id="p-confirm-pw" placeholder="Repeat new password">
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:4px;">
+          <button class="btn-form btn-save" style="font-size:0.78rem;padding:7px 18px;" onclick="changePassword()">Change Password</button>
+        </div>
+      </div>
+
+    </div>
+    <div class="profile-modal-footer">
+      <button class="btn-form btn-save" onclick="saveProfileSettings()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="page active" id="page-home">
+<div class="page-band page-band-with-profile">
+    <div>
+      <div class="page-band-title">Overview</div>
+      <div class="page-band-heading">Dashboard</div>
+    </div>
+    <div class="page-band-profile" id="home-band-profile"></div>
+  </div>
+  <div class="page-body">
+    <div class="session-list">
+      <div class="section-label">Active &amp; Saved Sessions</div>
+      <div id="home-sessions-container">
+        <div class="empty-state">
+          <div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z"/></svg></div>
+          <div class="empty-state-msg">No Active Sessions</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">Lab Tables</div>
+    <div class="tables-grid" id="home-tables-grid">
+      <div style="color:var(--gray-50); font-size:0.8rem; grid-column:1/-1;">Waiting for lockers…</div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-records">
+<div class="page-band page-band-with-profile">
+    <div>
+      <div class="page-band-title">History</div>
+      <div class="page-band-heading">Session Records</div>
+    </div>
+    <div class="page-band-profile" id="records-band-profile"></div>
+  </div>
+  <div class="page-body">
+    <div class="records-toolbar">
+      <span class="tool-label">Sort:</span>
+      <select class="tool-select" id="records-sort" onchange="onSortChange()">
+        <option value="newest">Newest First</option>
+        <option value="oldest">Oldest First</option>
+        <option value="course">Course Name</option>
+      </select>
+      <select class="tool-select" id="records-course-filter" style="display:none;" onchange="renderRecords()">
+        <option value="">All Courses</option>
+      </select>
+      <input class="tool-input" type="text" id="records-search" placeholder="Search by title…" oninput="renderRecords()" style="min-width:140px; flex:1; max-width:240px;">
+      <button class="btn-delete-experiments" id="btn-delete-experiments" onclick="toggleDeleteMode()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        Delete Experiments
+      </button>
+    </div>
+    <div class="delete-mode-bar" id="delete-mode-bar" style="display:none;">
+      <label class="delete-select-all-label">
+        <input type="checkbox" id="delete-select-all" onchange="toggleSelectAll(this.checked)"> Select All
+      </label>
+      <span id="delete-count-label" class="delete-count-label">0 selected</span>
+      <div style="margin-left:auto; display:flex; gap:8px;">
+        <button class="btn-form btn-delete" onclick="cancelDeleteMode()">Cancel</button>
+        <button class="btn-form btn-delete-confirm" id="btn-confirm-delete" onclick="confirmDeleteSelected()" disabled>Delete Selected</button>
+      </div>
+    </div>
+    <div id="records-list"></div>
+  </div>
+</div>
+
+<div class="page" id="page-new-session">
+  <div class="page-band page-band-with-actions">
+    <div>
+      <div class="page-band-title" id="form-band-eyebrow">New Session</div>
+      <div class="page-band-heading" id="form-band-heading">Enter Session Details</div>
+    </div>
+    <div class="form-actions-bar" id="form-actions-bar-top" style="margin:0; padding:0; background:transparent; border:none; box-shadow:none; justify-content:flex-end;"></div>
+  </div>
+  <!-- Edit-mode warning notice — shown only when editing a saved session -->
+  <div class="edit-warning-notice" id="edit-warning-notice" style="display:none;">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span>Double check all the information — <strong>it cannot be edited later.</strong> To continue, click <strong>Start Session</strong>.</span>
+  </div>
+
+  <div class="page-body">
+    <div class="form-wrapper">
+      <div class="form-card">
+        <div class="form-card-header">
+          <span class="form-card-title">Session Info</span>
+        </div>
+        <div class="form-card-body">
+          <div class="field-row">
+            <span class="field-label">Course</span>
+            <div class="course-manage-container">
+              <div class="course-input-row">
+                <select class="field-select" id="f-course">
+                  <option value="">Select course…</option>
+                </select>
+                <button class="btn-add-course" style="padding: 0 12px;" onclick="addCourse()">+ Add</button>
+              </div>
+              <div class="course-list-chips" id="course-chips-wrapper"></div>
+            </div>
+          </div>
+          <div class="field-row">
+            <span class="field-label">Title</span>
+            <input class="field-input" type="text" id="f-title" placeholder="Lab title…">
+          </div>
+          <div class="field-row">
+            <span class="field-label">Max Students / Table</span>
+            <input class="field-input" type="number" id="f-max-students" min="1" max="30" value="" style="max-width:100px;" placeholder="e.g. 4">
+          </div>
+          <div class="field-row">
+            <span class="field-label">Experiment Date</span>
+            <input class="field-input" type="date" id="f-exp-date" style="max-width:200px;">
+          </div>
+          <div class="field-row">
+            <span class="field-label">Session Time</span>
+            <div style="display:flex;align-items:center;gap:8px;flex:1;">
+              <input class="field-input" type="time" id="f-time-from" style="max-width:130px;" placeholder="From">
+              <span style="color:var(--gray-50);font-size:0.82rem;flex-shrink:0;">to</span>
+              <input class="field-input" type="time" id="f-time-to" style="max-width:130px;" placeholder="To">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-card-header">
+          <span class="form-card-title">Component Quantities</span>
+        </div>
+        <div class="form-card-body">
+          <div class="comp-grid" id="comp-grid"></div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-card-header">
+          <span class="form-card-title">Select Tables</span>
+          <button class="btn-text-sm" onclick="selectAllTables()">Select All</button>
+        </div>
+        <div class="form-card-body">
+          <div class="tables-grid-check" id="tables-checkbox-grid"></div>
+        </div>
+      </div>
+
+      <div class="form-actions-bar" id="form-actions-bar-bottom">
+         </div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-active-session">
+  <div class="session-top-bar">
+    <div class="session-title-row">
+      <div>
+        <span id="active-lab-title" class="active-session-name"></span>
+        <div id="active-session-course" class="active-session-course"></div>
+      </div>
+      <span class="live-badge"><span class="live-dot"></span>Live</span>
+    </div>
+    <div id="active-action-btn-top"></div>
+  </div>
+  <div id="active-stage-banner" class="active-stage-banner"></div>
+
+  <div id="stage-debriefing" style="display:none">
+    <div class="stage-panel">
+      <div class="stage-info-row">
+        <div class="stage-info-card">
+          <div class="stage-info-label">Current Stage</div>
+          <div class="stage-info-text">Components are locked.<br>Use this time to debrief the experiment with students.<br><br>Click <strong>Unlock Components</strong> when ready.</div>
+        </div>
+        <div class="stage-info-card">
+          <div class="stage-info-label">Attendance</div>
+          <div class="nfc-hint">
+            <span class="nfc-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-smartphone-nfc-icon lucide-smartphone-nfc"><rect width="7" height="12" x="2" y="6" rx="1"/><path d="M13 8.32a7.43 7.43 0 0 1 0 7.36"/><path d="M16.46 6.21a11.76 11.76 0 0 1 0 11.58"/><path d="M19.91 4.1a15.91 15.91 0 0 1 .01 15.8"/></svg>
+            </span>
+            <div>
+              <span class="nfc-text">Remind students to scan<br>their NFC card now to<br>mark attendance.</span>
+              <div class="debrief-total-att" id="debrief-total-att-display">
+                <div class="debrief-total-att-label">Total Attendance</div>
+                <div class="debrief-total-att-val" id="debrief-total-att-val">0 students</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section-label">Current Student Attendance</div>
+      <div class="attendance-grid" id="debrief-attendance-grid"></div>
+    </div>
+  </div>
+
+  <div id="stage-unlocked" style="display:none">
+    <div class="stage-panel">
+      <div class="stage-info-row">
+        <div class="stage-info-card">
+          <div class="stage-info-label">Current Stage</div>
+          <div class="stage-info-text">Components are unlocked.<br>Students may collect their assigned components.<br><br>Click <strong>Allow Returns</strong> when ready.</div>
+        </div>
+      </div>
+      <div class="section-label">
+        <span>Student Attendance</span>
+        <button class="btn-dl-sm" onclick="downloadAttendanceXLSX()">⬇ Download Attendance (.xlsx)</button>
+      </div>
+      <div class="attendance-grid" id="unlocked-attendance-grid"></div>
+    </div>
+  </div>
+
+  <div id="stage-returns" style="display:none">
+    <div class="stage-panel">
+      <div class="returns-legend">
+        <div class="legend-item"><span class="legend-dot" style="background:var(--red)"></span><span style="color:var(--red);">Missing</span> — one or more components not yet returned</div>
+        <div class="legend-item"><span class="legend-dot" style="background:var(--green)"></span><span style="color:var(--green);">Returned</span> — all components returned &amp; locked</div>
+      </div>
+      <div class="section-label">Component Status by Table</div>
+      <div class="attendance-grid" id="returns-status-grid"></div>
+    </div>
+  </div>
+
+  <div class="active-session-footer">
+     <div id="active-action-btn-bottom"></div>
+  </div>
+</div>
+
+<!-- ── Confirm Modal ── -->
+<div id="confirm-modal-overlay" class="confirm-overlay" onclick="closeConfirmModal(event)">
+  <div class="confirm-modal" onclick="event.stopPropagation()">
+    <div class="confirm-modal-header">
+      <span class="confirm-modal-title" id="confirm-modal-title">Confirm</span>
+    </div>
+    <div class="confirm-modal-body">
+      <p class="confirm-modal-msg" id="confirm-modal-msg"></p>
+    </div>
+    <div class="confirm-modal-footer">
+      <button class="btn-form btn-cancel-neutral" onclick="closeConfirmModal()">Cancel</button>
+      <button class="btn-form btn-delete" id="confirm-modal-ok" onclick="confirmModalOk()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  CONFIRM MODAL
+// ════════════════════════════════════════════
+let _confirmCallback = null;
+
+function showConfirmModal(title, message, onConfirm, okLabel) {
+  document.getElementById('confirm-modal-title').textContent = title || 'Confirm';
+  document.getElementById('confirm-modal-msg').textContent = message || 'Are you sure?';
+  document.getElementById('confirm-modal-ok').textContent = okLabel || 'Delete';
+  _confirmCallback = onConfirm || null;
+  document.getElementById('confirm-modal-overlay').classList.add('open');
+}
+
+function closeConfirmModal(e) {
+  if (e && e.target !== document.getElementById('confirm-modal-overlay')) return;
+  document.getElementById('confirm-modal-overlay').classList.remove('open');
+  _confirmCallback = null;
+}
+
+function confirmModalOk() {
+  document.getElementById('confirm-modal-overlay').classList.remove('open');
+  if (_confirmCallback) { _confirmCallback(); _confirmCallback = null; }
+}
+
+
+const COMPONENT_TYPES = ["Resistors","Capacitors","IC","Transistors"];
+const STORE_COURSES_KEY = "lab_sight_courses";
+const STORE_ACTIVE_KEY = "lab_sight_active_session";
+const STORE_SAVED_KEY = "lab_sight_saved_sessions";
+const STORE_PROFILE_KEY = "lab_sight_profile";
+
+// ════════════════════════════════════════════
+//  STATE MANAGEMENT
+// ════════════════════════════════════════════
+const socket = io();
+
+let lockers       = {};
+let reports       = [];
+let courses       = [];
+let savedSessions = [];
+let editingSession = null;
+let activeSession  = null;
+let profileData   = { labName: '', roomNo: '', labEngineer: '' };
+
+// Initial state persistence loader
+function loadPersistentState() {
+  try {
+    const rawCourses = localStorage.getItem(STORE_COURSES_KEY);
+    courses = rawCourses ? JSON.parse(rawCourses) : ["Electronics I", "Embedded Labs", "Physics Basic"];
+    
+    const rawActive = localStorage.getItem(STORE_ACTIVE_KEY);
+    activeSession = rawActive ? JSON.parse(rawActive) : null;
+
+    const rawSaved = localStorage.getItem(STORE_SAVED_KEY);
+    savedSessions = rawSaved ? JSON.parse(rawSaved) : [];
+
+    const rawProfile = localStorage.getItem(STORE_PROFILE_KEY);
+    profileData = rawProfile ? JSON.parse(rawProfile) : { labName: '', roomNo: '', labEngineer: '' };
+    if (!profileData.labEngineer) profileData.labEngineer = '';
+  } catch (e) {
+    console.error("Error loading localStorage state:", e);
+  }
+}
+
+function saveCoursesToStorage() {
+  localStorage.setItem(STORE_COURSES_KEY, JSON.stringify(courses));
+}
+function saveActiveToStorage() {
+  if(activeSession) {
+    localStorage.setItem(STORE_ACTIVE_KEY, JSON.stringify(activeSession));
+  } else {
+    localStorage.removeItem(STORE_ACTIVE_KEY);
+  }
+}
+function saveSavedSessionsToStorage() {
+  localStorage.setItem(STORE_SAVED_KEY, JSON.stringify(savedSessions));
+}
+
+// ════════════════════════════════════════════
+//  PAGE NAVIGATION
+// ════════════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+
+  document.querySelectorAll('.btn-nav').forEach(b => b.classList.remove('active'));
+  const navBtn = document.getElementById('nav-' + name);
+  if (navBtn) navBtn.classList.add('active');
+
+  if (name === 'home')           renderHome();
+  if (name === 'records')        { onSortChange(); renderRecords(); }
+  if (name === 'new-session')    renderNewSessionForm(editingSession);
+  if (name === 'active-session') renderActiveSession();
+}
+
+// ════════════════════════════════════════════
+//  SOCKET.IO
+// ════════════════════════════════════════════
+socket.on("connect", () => {});
+socket.on("disconnect", () => {});
+
+socket.on("locker_list_update", (list) => {
+  list.forEach(l => { lockers[l.locker_id] = { online: l.online, state: l.state || {} }; });
+  if (document.getElementById('page-home').classList.contains('active')) renderHome();
+  if (document.getElementById('page-active-session').classList.contains('active')) renderActiveSession();
+});
+
+socket.on("locker_state_update", (payload) => {
+  const lid = payload.locker_id;
+  if (!lockers[lid]) lockers[lid] = { online: true, state: {} };
+  lockers[lid].online = payload.online;
+  lockers[lid].state  = payload.state || {};
+  if (document.getElementById('page-home').classList.contains('active')) renderHome();
+  if (document.getElementById('page-active-session').classList.contains('active')) renderActiveSession();
+});
+
+
+
+// ════════════════════════════════════════════
+//  HOME
+// ════════════════════════════════════════════
+function renderHome() {
+  const container = document.getElementById('home-sessions-container');
+  container.innerHTML = '';
+
+  const hasAny = activeSession || savedSessions.length > 0;
+  if (!hasAny) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z"/></svg></div>
+      <div class="empty-state-msg">No Active Sessions</div>
+    </div>`;
+  } else {
+    if (activeSession) {
+      const card = document.createElement('div');
+      card.className = 'session-card active-live';
+      card.innerHTML = `
+        <div>
+          <div class="session-card-title">${escHtml(activeSession.title.toUpperCase())}</div>
+          <div class="session-card-meta">
+            Stage: ${capitalizeFirst(activeSession.stage)} &nbsp;·&nbsp; ${escHtml(activeSession.course || '—')}
+            &nbsp;·&nbsp; ${activeSession.tables.length} table(s) <span style="color:var(--green); font-weight:bold;">(LIVE)</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="live-badge"><span class="live-dot"></span>Live</span>
+          <span class="session-card-arrow">→</span>
+        </div>
+      `;
+      card.onclick = () => showPage('active-session');
+      container.appendChild(card);
+    }
+    // Sort saved sessions by closest upcoming date first
+    const now = new Date();
+    const sortedSessions = [...savedSessions].sort((a, b) => {
+      const da = a.expDate ? new Date(a.expDate) : new Date('9999-12-31');
+      const db = b.expDate ? new Date(b.expDate) : new Date('9999-12-31');
+      // Closest to today (future first, then past by recency)
+      const diffA = da - now;
+      const diffB = db - now;
+      // Both future: smaller diff first; both past: larger (less negative) first; mixed: future first
+      if (diffA >= 0 && diffB >= 0) return diffA - diffB;
+      if (diffA < 0 && diffB < 0)   return diffB - diffA;
+      return diffA >= 0 ? -1 : 1;
+    });
+
+    sortedSessions.forEach(sess => {
+      const card = document.createElement('div');
+      card.className = 'session-card';
+      // Build component summary
+      const compSummary = Object.entries(sess.components || {})
+        .filter(([, qty]) => qty > 0)
+        .map(([comp, qty]) => `${comp}: ${qty}`)
+        .join(' · ');
+      const dateDisplay = sess.expDate ? formatDateStr(sess.expDate) : '—';
+
+      // Time until badge
+      let timeBadgeHtml = '';
+      if (sess.expDate) {
+        const [y, m, d] = sess.expDate.split('-').map(Number);
+        const sessionDay = new Date(y, m - 1, d);
+        const todayDay   = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const diffDays   = Math.round((sessionDay - todayDay) / 86400000);
+        if (diffDays === 0) {
+          timeBadgeHtml = `<span class="session-time-badge today">Today</span>`;
+        } else if (diffDays === 1) {
+          timeBadgeHtml = `<span class="session-time-badge soon">Tomorrow</span>`;
+        } else if (diffDays > 1 && diffDays <= 7) {
+          timeBadgeHtml = `<span class="session-time-badge soon">In ${diffDays} days</span>`;
+        } else if (diffDays > 7) {
+          timeBadgeHtml = `<span class="session-time-badge upcoming">In ${diffDays} days</span>`;
+        } else {
+          // past
+          const absDays = Math.abs(diffDays);
+          timeBadgeHtml = `<span class="session-time-badge past">${absDays === 1 ? 'Yesterday' : absDays + ' days ago'}</span>`;
+        }
+      }
+
+      // Time range display
+      const timeRange = (sess.timeFrom && sess.timeTo) ? ` · ${sess.timeFrom} – ${sess.timeTo}` : (sess.timeFrom ? ` · From ${sess.timeFrom}` : '');
+
+      card.innerHTML = `
+        <div class="session-card-body">
+          <div class="session-card-course">${escHtml(sess.course || '—')}</div>
+          <div class="session-card-title">${escHtml(sess.title.toUpperCase())}</div>
+          <div class="session-card-meta session-card-meta-row">
+            <span>${dateDisplay}${escHtml(timeRange)}</span>
+            <span class="session-card-status-badge">Not Live</span>
+            ${timeBadgeHtml}
+          </div>
+          ${compSummary ? `<div class="session-card-components">${escHtml(compSummary)}</div>` : ''}
+        </div>
+        <div class="session-card-start-action">
+          <span class="session-card-start-text">Start Session</span>
+          <span class="session-card-arrow-big">→</span>
+        </div>
+      `;
+      card.querySelector('.session-card-start-action').onclick = (e) => {
+        e.stopPropagation();
+        editingSession = sess;
+        showPage('new-session');
+      };
+      card.onclick = () => { editingSession = sess; showPage('new-session'); };
+      container.appendChild(card);
+    });
+  }
+
+  // Tables grid layout logic updated to dynamic context (Fix #1)
+  const grid = document.getElementById('home-tables-grid');
+  grid.innerHTML = '';
+  const ids = Object.keys(lockers).sort();
+  if (!ids.length) {
+    grid.innerHTML = '<div style="color:var(--gray-50); font-size:0.8rem; grid-column:1/-1;">No lockers connected.</div>';
+    return;
+  }
+  
+  ids.forEach(lid => {
+    const info  = lockers[lid];
+    let isInSession = false;
+    if (activeSession && activeSession.tables.includes(lid)) {
+       isInSession = true;
+    }
+
+    let cls, txt;
+    if (!info.online)          { cls = 'offline';  txt = 'Disconnected'; }
+    else if (!isInSession)     { cls = 'online';   txt = 'Connected'; }
+    else                       { cls = 'in-sess';  txt = 'In Session'; }
+
+    const card = document.createElement('div');
+    card.className = `table-card ${cls}`;
+    card.innerHTML = `
+      <div class="table-name">${escHtml(lid.toUpperCase())}</div>
+      <div class="status-row">
+        <span class="status-dot ${cls}"></span>
+        <span class="status-text ${cls}">${txt}</span>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// ════════════════════════════════════════════
+//  RECORDS
+// ════════════════════════════════════════════
+function onSortChange() {
+  const sort = document.getElementById('records-sort').value;
+  const cf   = document.getElementById('records-course-filter');
+  if (sort === 'course') {
+    const allCourses = [...new Set(reports.map(r => r.course || '').filter(Boolean))].sort();
+    cf.innerHTML = '<option value="">All Courses</option>';
+    allCourses.forEach(c => {
+      const o = document.createElement('option'); o.value = c; o.textContent = c; cf.appendChild(o);
+    });
+    cf.style.display = 'inline-block';
+  } else {
+    cf.style.display = 'none';
+  }
+  renderRecords();
+}
+
+// ── Delete mode state ──
+let deleteModeActive = false;
+let selectedForDelete = new Set();
+let stageTransitionInProgress = false;
+
+function toggleDeleteMode() {
+  deleteModeActive = !deleteModeActive;
+  selectedForDelete.clear();
+  const bar = document.getElementById('delete-mode-bar');
+  const btn = document.getElementById('btn-delete-experiments');
+  bar.style.display = deleteModeActive ? 'flex' : 'none';
+  btn.classList.toggle('active', deleteModeActive);
+  document.getElementById('delete-select-all').checked = false;
+  updateDeleteCount();
+  renderRecords();
+}
+
+function cancelDeleteMode() {
+  deleteModeActive = false;
+  selectedForDelete.clear();
+  document.getElementById('delete-mode-bar').style.display = 'none';
+  document.getElementById('btn-delete-experiments').classList.remove('active');
+  renderRecords();
+}
+
+function toggleSelectAll(checked) {
+  const checkboxes = document.querySelectorAll('.record-delete-cb');
+  checkboxes.forEach(cb => {
+    cb.checked = checked;
+    const idx = parseInt(cb.dataset.idx);
+    if (checked) selectedForDelete.add(idx);
+    else selectedForDelete.delete(idx);
+  });
+  updateDeleteCount();
+}
+
+function updateDeleteCount() {
+  const label = document.getElementById('delete-count-label');
+  const btn   = document.getElementById('btn-confirm-delete');
+  const n = selectedForDelete.size;
+  label.textContent = n + ' selected';
+  btn.disabled = n === 0;
+}
+
+function confirmDeleteSelected() {
+  if (selectedForDelete.size === 0) return;
+  const n = selectedForDelete.size;
+  showConfirmModal(
+    'Delete Experiments',
+    `Are you sure you want to delete ${n} experiment record${n > 1 ? 's' : ''}? This cannot be undone.`,
+    () => {
+      const toDelete = [...selectedForDelete].sort((a, b) => b - a);
+      // Persist deletions to the server so they survive page refresh
+      fetch('/api/reports/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ indices: toDelete }),
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.status !== 'ok') { alert('Server error — records were not deleted.'); return; }
+        toDelete.forEach(i => reports.splice(i, 1));
+        cancelDeleteMode();
+      })
+      .catch(() => {
+        alert('Could not reach server — records were not deleted.');
+      });
+    }
+  );
+}
+
+function renderRecords() {
+  const sort         = document.getElementById('records-sort').value;
+  const courseFilter = document.getElementById('records-course-filter').value;
+  const search       = (document.getElementById('records-search').value || '').toLowerCase();
+
+  let filtered = reports.map((r, origIdx) => ({ ...r, _origIdx: origIdx })).filter(r => {
+    const titleMatch  = !search || (r.title||'').toLowerCase().includes(search);
+    const courseMatch = !courseFilter || (r.course||'') === courseFilter;
+    return titleMatch && courseMatch;
+  });
+
+  if (sort === 'course')  filtered.sort((a,b) => (a.course||'').localeCompare(b.course||''));
+  else if (sort === 'oldest') filtered.reverse();
+  // newest = default order (reports are unshifted so newest first already)
+
+  const list = document.getElementById('records-list');
+  list.innerHTML = '';
+  if (!filtered.length) {
+    list.innerHTML = '<div style="color:var(--gray-50); font-size:0.82rem; padding:24px 0;">No records found.</div>';
+    return;
+  }
+
+  filtered.forEach((rep, i) => {
+    const origIdx = rep._origIdx;
+    const card = document.createElement('div');
+    card.className = 'record-card';
+    const checkboxHtml = deleteModeActive
+      ? `<input type="checkbox" class="record-delete-cb" data-idx="${origIdx}" ${selectedForDelete.has(origIdx) ? 'checked' : ''} onchange="onRecordCheckChange(this)" onclick="event.stopPropagation()">`
+      : '';
+    card.innerHTML = `
+      <div class="record-card-row">
+        ${checkboxHtml ? `<div class="record-delete-cb-wrap">${checkboxHtml}</div>` : ''}
+        <div class="record-card-left">
+          <div class="record-card-title">${escHtml((rep.title||'').toUpperCase())}</div>
+          <div class="record-card-sub">${escHtml(rep.course||'—')}</div>
+          <div class="record-card-sub">${escHtml(rep.date||'—')}</div>
+        </div>
+        <div class="record-card-right">
+          ${!deleteModeActive ? `<button class="btn-dl" onclick="event.stopPropagation(); downloadReportXLSX(${origIdx})"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Download Attendance .xlsx</button>` : ''}
+          ${!deleteModeActive ? `<span class="record-arrow" id="rec-arrow-${i}">›</span>` : ''}
+        </div>
+      </div>
+      <div class="record-expanded" id="rec-exp-${i}">
+        ${buildExpandedRecord(rep, origIdx)}
+      </div>
+    `;
+    if (!deleteModeActive) {
+      card.querySelector('.record-card-row').onclick = () => toggleRecord(i);
+    }
+    list.appendChild(card);
+  });
+}
+
+function onRecordCheckChange(cb) {
+  const idx = parseInt(cb.dataset.idx);
+  if (cb.checked) selectedForDelete.add(idx);
+  else selectedForDelete.delete(idx);
+  // sync select-all checkbox
+  const allCbs = document.querySelectorAll('.record-delete-cb');
+  document.getElementById('delete-select-all').checked = allCbs.length > 0 && [...allCbs].every(c => c.checked);
+  updateDeleteCount();
+}
+
+function toggleRecord(i) {
+  const exp   = document.getElementById('rec-exp-' + i);
+  const arrow = document.getElementById('rec-arrow-' + i);
+  const isOpen = exp.classList.contains('open');
+  document.querySelectorAll('.record-expanded').forEach(e => e.classList.remove('open'));
+  document.querySelectorAll('.record-arrow').forEach(a => a.textContent = '›');
+  if (!isOpen) { exp.classList.add('open'); arrow.textContent = '⌄'; }
+}
+
+function buildExpandedRecord(rep, i) {
+  const rows = rep.rows || [];
+  const tableStatuses = rep.table_statuses || {};
+
+  const compsHtml = rows.length
+    ? rows.map(r => `<div class="chip">${escHtml(r.comp)}<span class="chip-qty">${r.required||0}</span></div>`).join('')
+    : '<span style="color:var(--gray-50);font-size:0.78rem;">None recorded</span>';
+
+  // Build a set of component names that are missing across all tables
+  const missingCompNames = new Set();
+  Object.entries(tableStatuses).forEach(([tid, ts]) => {
+    if (ts !== 'returned' && ts !== 'locked') {
+      // Mark all components as potentially missing for this table
+      rows.forEach(r => missingCompNames.add(r.comp));
+    }
+  });
+
+  const tableHtml = Object.keys(tableStatuses).length
+    ? Object.entries(tableStatuses).map(([tid, ts]) => {
+        const isOk  = (ts === 'returned' || ts === 'locked');
+        const cls   = isOk ? 'returned' : 'missing';
+        const label = isOk ? 'All Returned' : 'Missing';
+
+        // Students at this table — objects have {name, rollNumber, table}
+        // Strings are legacy format; match them to the first table as a fallback
+        const tableStudents = (rep.students || []).filter(s => {
+          if (typeof s === 'object' && s !== null) return s.table === tid;
+          return false;
+        });
+
+        const studentsHtml = tableStudents.length
+          ? `<div class="exp-table-students">${tableStudents.map(s => {
+              const name = typeof s === 'object' && s !== null ? s.name : s;
+              const roll = typeof s === 'object' && s !== null && s.rollNumber
+                ? ` <span class="exp-student-roll">${escHtml(s.rollNumber)}</span>` : '';
+              return `<span class="exp-student-chip">${escHtml(name)}${roll}</span>`;
+            }).join('')}</div>`
+          : '<div class="exp-table-students" style="color:var(--gray-50);font-size:0.75rem;">No students scanned</div>';
+
+        // Missing component details from rows
+        let missingCompsHtml = '';
+        if (!isOk && rows.length) {
+          missingCompsHtml = `<div class="exp-missing-comps">${rows.map(r =>
+            `<span class="exp-missing-chip">${escHtml(r.comp)}: ${r.required||0}</span>`
+          ).join('')}</div>`;
+        }
+
+        return `<div class="exp-table-card ${cls}">
+          <div class="exp-table-card-header">
+            <span class="exp-table-name">${escHtml(tid.toUpperCase())}</span>
+            <span class="exp-table-status-badge ${cls}">${label}</span>
+          </div>
+          ${studentsHtml}
+          ${missingCompsHtml}
+        </div>`;
+      }).join('')
+    : '<span style="color:var(--gray-50);font-size:0.78rem;">No table data</span>';
+
+  // Student count for meta row
+  const allStudents = rep.students || [];
+
+  return `
+    <div class="exp-meta-row">
+      <div class="exp-meta-item">
+        <div class="exp-meta-label">Course</div>
+        <div class="exp-meta-value">${escHtml(rep.course||'—')}</div>
+      </div>
+      <div class="exp-meta-item">
+        <div class="exp-meta-label">Date</div>
+        <div class="exp-meta-value">${escHtml(rep.date||'—')}</div>
+      </div>
+      <div class="exp-meta-item">
+        <div class="exp-meta-label">Students</div>
+        <div class="exp-meta-value">${allStudents.length}</div>
+      </div>
+    </div>
+    <div class="exp-section">
+      <div class="exp-section-label">Assigned Components</div>
+      <div class="chips-row">${compsHtml}</div>
+    </div>
+    <div class="exp-section">
+      <div class="exp-section-label">Table Return Status</div>
+      <div class="exp-tables-grid">${tableHtml}</div>
+    </div>
+  `;
+}
+
+function downloadReportXLSX(i) {
+  const rep = reports[i];
+  if (!rep) return;
+  buildAndDownloadXLSX(rep);
+}
+
+// ── CUSTOM SHEET AND EXCEL STRUCTURING EXPORTER (Fix #7) ──
+function buildAndDownloadXLSX(rep) {
+  const wb = XLSX.utils.book_new();
+  const cName = rep.course || 'Unknown Course';
+  const lDate = rep.date || 'Unknown Date';
+  const lTitle = rep.title || 'Lab Session';
+
+  // Construct Custom Aesthetic Header Data block
+  const trackingDataMatrix = [
+    ['COURSE NAME:', cName],
+    ['SESSION DATE:', lDate],
+    ['LAB TITLE:', lTitle],
+    [], // spacing
+    ['Student Name', 'Roll Number', 'Scan Timestamp'] // table headers
+  ];
+
+  // Process mapping over the dataset structure checking for raw array objects or strings
+  const studentsArray = rep.students || [];
+  studentsArray.forEach(stuObj => {
+    if (typeof stuObj === 'object' && stuObj !== null) {
+       trackingDataMatrix.push([
+         stuObj.name || '—', 
+         stuObj.rollNumber || '—', 
+         stuObj.timestamp || '—'
+       ]);
+    } else {
+       // fallback for simple format strings mapping default structures
+       trackingDataMatrix.push([
+         stuObj, 
+         '—', 
+         new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+       ]);
+    }
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(trackingDataMatrix);
+  ws['!cols'] = [{wch:30}, {wch:22}, {wch:25}];
+
+  // Sheet Title rules enforcement truncation safety
+  let structuredSheetTitle = `${cName}, ${lDate}, ${lTitle} attendance`;
+  if (structuredSheetTitle.length > 31) {
+     structuredSheetTitle = structuredSheetTitle.substring(0, 28) + '...';
+  }
+
+  XLSX.utils.book_append_sheet(wb, ws, structuredSheetTitle);
+  const fname = `Attendance_${cName.replace(/\s+/g,'_')}_${lTitle.replace(/\s+/g,'_')}.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+// ════════════════════════════════════════════
+//  NEW SESSION FORM & MANAGEMENT
+// ════════════════════════════════════════════
+function renderNewSessionForm(sess) {
+  const isSaved = !!sess;
+  document.getElementById('form-band-eyebrow').textContent = isSaved ? 'Edit Session' : 'New Session';
+  document.getElementById('form-band-heading').textContent = isSaved ? (sess.title || 'Session Details') : 'Enter Session Details';
+
+  // Show/hide edit warning notice
+  const warnEl = document.getElementById('edit-warning-notice');
+  if (warnEl) warnEl.style.display = isSaved ? 'flex' : 'none';
+
+  // Render synced controls layout at Top and Bottom (Fix #4)
+  setupFormActionButtons('form-actions-bar-top', isSaved);
+  setupFormActionButtons('form-actions-bar-bottom', isSaved);
+
+  document.getElementById('f-title').value        = sess ? sess.title : '';
+  document.getElementById('f-max-students').value = sess ? sess.maxStudents : '';
+
+  // Set experiment date: use saved date or default to today
+  const dateEl = document.getElementById('f-exp-date');
+  if (dateEl) {
+    if (sess && sess.expDate) {
+      dateEl.value = sess.expDate;
+    } else {
+      dateEl.value = new Date().toISOString().split('T')[0];
+    }
+  }
+  const timeFromEl = document.getElementById('f-time-from');
+  const timeToEl   = document.getElementById('f-time-to');
+  if (timeFromEl) timeFromEl.value = (sess && sess.timeFrom) ? sess.timeFrom : '';
+  if (timeToEl)   timeToEl.value   = (sess && sess.timeTo)   ? sess.timeTo   : '';
+
+  // Re-sync options elements dropdown
+  repopulateCourseDropdown(sess ? sess.course : '');
+  renderCourseChipsManager();
+
+  const grid = document.getElementById('comp-grid');
+  grid.innerHTML = '';
+  COMPONENT_TYPES.forEach(comp => {
+    const qty = sess ? (sess.components[comp] || 0) : 0;
+    const chip = document.createElement('div');
+    chip.className = 'comp-chip';
+    chip.innerHTML = `${escHtml(comp)}<input type="number" id="comp-${comp}" min="0" max="99" value="${qty}">`;
+    grid.appendChild(chip);
+  });
+
+  const cbGrid = document.getElementById('tables-checkbox-grid');
+  cbGrid.innerHTML = '';
+  const ids = Object.keys(lockers).sort();
+  ids.forEach(lid => {
+    const checked = sess ? sess.tables.includes(lid) : false;
+    const item = document.createElement('label');
+    item.className = 'table-check-item';
+    item.innerHTML = `<span>${escHtml(lid.toUpperCase())}</span><input type="checkbox" id="tbl-${lid}" ${checked ? 'checked' : ''}>`;
+    cbGrid.appendChild(item);
+  });
+  if (!ids.length) {
+    cbGrid.innerHTML = '<span style="color:var(--gray-50);font-size:0.8rem;">No lockers connected.</span>';
+  }
+}
+
+function repopulateCourseDropdown(selectedCourseValue) {
+  const sel = document.getElementById('f-course');
+  sel.innerHTML = '<option value="">Select course…</option>';
+  courses.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    if (selectedCourseValue === c) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+// Global chip editor interface wrapper logic block (Fix #3)
+function renderCourseChipsManager() {
+  const wrapper = document.getElementById('course-chips-wrapper');
+  wrapper.innerHTML = '';
+  courses.forEach((c, idx) => {
+    const chip = document.createElement('div');
+    chip.className = 'course-chip-del';
+    chip.innerHTML = `<span>${escHtml(c)}</span><button class="btn-del-c" onclick="deleteCourseAtIndex(${idx})">&times;</button>`;
+    wrapper.appendChild(chip);
+  });
+}
+
+function setupFormActionButtons(targetBarId, isSaved) {
+  const bar = document.getElementById(targetBarId);
+  if(!isSaved) {
+     bar.innerHTML = `
+        <div style="display:flex; gap:8px; width:100%; justify-content:flex-end;">
+          <button class="btn-form btn-save" onclick="saveSession()">Save Draft</button>
+        </div>`;
+  } else {
+     bar.innerHTML = `
+        <div style="display:flex; gap:8px; width:100%; justify-content:flex-end;">
+          <button class="btn-form btn-delete" onclick="deleteSession()">Delete</button>
+          <button class="btn-form btn-save"   onclick="saveSession()">Save</button>
+          <button class="btn-form btn-start"  onclick="startSession()">Start Session →</button>
+        </div>`;
+  }
+}
+
+function getFormValues() {
+  const title  = document.getElementById('f-title').value.trim();
+  const course = document.getElementById('f-course').value;
+  const maxStu = parseInt(document.getElementById('f-max-students').value) || 0;
+  const expDateRaw = document.getElementById('f-exp-date') ? document.getElementById('f-exp-date').value : '';
+  const timeFrom = document.getElementById('f-time-from') ? document.getElementById('f-time-from').value : '';
+  const timeTo   = document.getElementById('f-time-to')   ? document.getElementById('f-time-to').value   : '';
+  const components = {};
+  COMPONENT_TYPES.forEach(c => { components[c] = parseInt(document.getElementById('comp-' + c).value) || 0; });
+  const tables = Object.keys(lockers).filter(lid => {
+    const cb = document.getElementById('tbl-' + lid);
+    return cb && cb.checked;
+  });
+  return { title, course, maxStudents: maxStu, components, tables, expDate: expDateRaw, timeFrom, timeTo };
+}
+
+function saveSession() {
+  const vals = getFormValues();
+  if (!vals.title) { alert('Please enter a title.'); return; }
+  const wasEditing = !!editingSession;
+  if (editingSession) {
+    // replace original entry reference properties mapping data context inline
+    const idx = savedSessions.findIndex(s => s.title === editingSession.title && s.course === editingSession.course);
+    if(idx !== -1) {
+       savedSessions[idx] = { ...vals };
+       editingSession = savedSessions[idx];
+    } else {
+       Object.assign(editingSession, vals);
+    }
+  } else {
+    savedSessions.push({ ...vals });
+    editingSession = null;
+  }
+  saveSavedSessionsToStorage(); // State local persistence cache refresh
+  if (!wasEditing) {
+    editingSession = null;
+    showPage('home');
+  } else {
+    // Stay on edit page, just refresh button bar to reflect saved state
+    renderNewSessionForm(editingSession);
+  }
+}
+
+function deleteSession() {
+  if (!editingSession) return;
+  showConfirmModal(
+    'Delete Session',
+    `Are you sure you want to delete the session "${editingSession.title || 'this session'}"? This cannot be undone.`,
+    () => {
+      const idx = savedSessions.findIndex(s => s.title === editingSession.title && s.course === editingSession.course);
+      if (idx > -1) savedSessions.splice(idx, 1);
+      editingSession = null;
+      saveSavedSessionsToStorage();
+      showPage('home');
+    }
+  );
+}
+
+function startSession() {
+  const vals = getFormValues();
+  if (!vals.title)         { alert('Please enter a title.'); return; }
+  if (!vals.tables.length) { alert('Please select at least one table.'); return; }
+
+  // Set initial live stage state 
+  activeSession = { ...vals, stage: 'debriefing' };
+  saveActiveToStorage();
+
+  if (editingSession) {
+    const idx = savedSessions.findIndex(s => s.title === editingSession.title && s.course === editingSession.course);
+    if (idx > -1) savedSessions.splice(idx, 1);
+    saveSavedSessionsToStorage();
+  }
+  editingSession = null;
+
+  const piComponents = {
+    Capacitor:  vals.components['Capacitors']  || 0,
+    IC:         vals.components['IC']          || 0,
+    Resistor:   vals.components['Resistors']   || 0,
+    Transistor: vals.components['Transistors'] || 0,
+  };
+
+  // 1. Instantly clear previous states on target locker nodes
+  vals.tables.forEach(lid => {
+    sendCommand(lid, { cmd: 'new_session' });
+  });
+
+  // 2. Transmit session properties and strictly push the TFT to transition out of Screen 1
+  setTimeout(() => {
+    vals.tables.forEach(lid => {
+      sendCommand(lid, {
+        cmd: 'start_session',
+        title: vals.title,
+        components: piComponents,
+        max_students: vals.maxStudents
+      });
+      
+      // Force immediate screen layout shift command definition sequence
+      sendCommand(lid, { cmd: 'show_debriefing' }); 
+    });
+  }, 1000);
+
+  showPage('active-session');
+}
+
+function addCourse() {
+  const name = prompt('New course name:');
+  if (!name || !name.trim()) return;
+  const c = name.trim();
+  if (!courses.includes(c)) {
+     courses.push(c);
+     saveCoursesToStorage(); // Lock data changes down inside Storage persistence safely (Fix #3)
+  }
+  const currentSelect = document.getElementById('f-course').value;
+  repopulateCourseDropdown(currentSelect || c);
+  renderCourseChipsManager();
+}
+
+function deleteCourseAtIndex(idx) {
+  showConfirmModal(
+    'Delete Course',
+    `Are you sure you want to delete the course "${courses[idx]}"?`,
+    () => {
+      courses.splice(idx, 1);
+      saveCoursesToStorage();
+      repopulateCourseDropdown('');
+      renderCourseChipsManager();
+    }
+  );
+}
+
+function selectAllTables() {
+  document.querySelectorAll('#tables-checkbox-grid input[type=checkbox]').forEach(cb => cb.checked = true);
+}
+
+// ════════════════════════════════════════════
+//  ACTIVE LAB LIVE SESSION INTERFACE
+// ════════════════════════════════════════════
+function renderActiveSession() {
+  if (!activeSession) { showPage('home'); return; }
+  document.getElementById('active-lab-title').textContent = activeSession.title.toUpperCase();
+
+  // Change 5: show course in subheader
+  const courseEl = document.getElementById('active-session-course');
+  if (courseEl) courseEl.textContent = activeSession.course || '';
+
+  // Change 6: bigger current stage banner
+  const stageBanner = document.getElementById('active-stage-banner');
+  const stageLabels = { debriefing: 'Debriefing', unlocked: 'Components Unlocked', returns: 'Returns' };
+  if (stageBanner) {
+    stageBanner.textContent = 'Current Stage: ' + (stageLabels[activeSession.stage] || activeSession.stage);
+  }
+
+  ['debriefing','unlocked','returns'].forEach(s => {
+    document.getElementById('stage-' + s).style.display = (activeSession.stage === s) ? 'block' : 'none';
+  });
+
+  // Dual Rendering setup for matching Top & Bottom Controller Action Buttons (Fix #4)
+  const btnAreaTop = document.getElementById('active-action-btn-top');
+  const btnAreaBottom = document.getElementById('active-action-btn-bottom');
+  
+  let dynamicHtmlButtons = '';
+  if (activeSession.stage === 'debriefing') {
+    dynamicHtmlButtons = `<button class="btn-action-green" onclick="advanceStage('unlocked')">Unlock Components →</button>`;
+
+  } else if (activeSession.stage === 'unlocked') {
+    dynamicHtmlButtons = `<button class="btn-action-green" onclick="advanceStage('returns')">Allow Returns →</button>`;
+  } else if (activeSession.stage === 'returns') {
+    // Change 12: "End" and "Cancel" labels
+    dynamicHtmlButtons = `<button class="btn-action-red" onclick="endSession()">End Session for All</button>`;
+  }
+
+  btnAreaTop.innerHTML = dynamicHtmlButtons;
+  btnAreaBottom.innerHTML = dynamicHtmlButtons;
+
+  const tableData = getAttendanceFromLockers();
+  if (activeSession.stage === 'debriefing') {
+    renderAttendanceGrid('debrief-attendance-grid', tableData);
+    // Update total attendance count
+    const total = tableData.reduce((sum, t) => sum + t.present, 0);
+    const totalEl = document.getElementById('debrief-total-att-val');
+    if (totalEl) totalEl.textContent = total === 1 ? '1 student' : total + ' students';
+  }
+  else if (activeSession.stage === 'unlocked') renderAttendanceGrid('unlocked-attendance-grid', tableData);
+  else if (activeSession.stage === 'returns') renderReturnsGrid('returns-status-grid', tableData);
+}
+
+function getAttendanceFromLockers() {
+  if (!activeSession) return [];
+  return activeSession.tables.map(lid => {
+    const state = (lockers[lid] || {}).state || {};
+    
+    // Explicit array mapping parsing context fixes evaluation extraction logic cleanly
+    let scannedList = state.scanned_names || [];
+    let countEvaluated = scannedList.length; // Uses the absolute length of tracking names array (Fix #6)
+
+    return {
+      lid, 
+      present: countEvaluated,
+      max: activeSession.maxStudents || 4,
+      names: scannedList,
+      compStatus: state.comp_status || {},
+      phase: state.phase || 'idle',
+    };
+  });
+}
+
+function renderAttendanceGrid(gridId, tableData) {
+  const grid = document.getElementById(gridId);
+  grid.innerHTML = '';
+  tableData.forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'attendance-card';
+    const namesHtml = t.names.slice(0, 15).map(n => {
+       const displayLabel = (typeof n === 'object' && n !== null) ? n.name : n;
+       return `<div class="att-student">${escHtml(displayLabel)}</div>`;
+    }).join('');
+
+    // Change 7: live locker online status (not hardcoded green)
+    const lockerOnline = (lockers[t.lid] || {}).online;
+    const dotCls = lockerOnline ? 'in-sess' : 'offline';
+    
+    // Change 8: "no students scanned yet" when 0
+    const noStudentsHtml = t.present === 0
+      ? `<div class="att-no-students">No students scanned yet</div>`
+      : '';
+    
+    card.innerHTML = `
+      <div class="att-card-top">
+        <span class="att-table-name">${escHtml(t.lid.toUpperCase())}</span>
+        <span class="status-dot ${dotCls}"></span>
+      </div>
+      <div class="att-count">${t.present}/${t.max} present</div>
+      ${noStudentsHtml}
+      ${namesHtml}
+    `;
+    grid.appendChild(card);
+  });
+  if (!tableData.length) {
+    grid.innerHTML = '<div style="color:var(--gray-50);font-size:0.8rem;">No tables in session.</div>';
+  }
+}
+
+function renderReturnsGrid(gridId, tableData) {
+  const grid = document.getElementById(gridId);
+  grid.innerHTML = '';
+  tableData.forEach(t => {
+    const allReturned = Object.values(t.compStatus).every(cs => cs.status==='ok'||cs.status==='idle'||cs.status==='unused');
+    const cls  = allReturned ? 'in-sess' : 'offline';
+    const card = document.createElement('div');
+    card.className = 'attendance-card';
+    card.style.borderTopColor = allReturned ? 'var(--green)' : 'var(--red)';
+    
+    const namesHtml = t.names.slice(0,3).map(n => {
+       const displayLabel = (typeof n === 'object' && n !== null) ? n.name : n;
+       return `<div class="att-student">${escHtml(displayLabel)}</div>`;
+    }).join('');
+
+    // Change 11: missing component details
+    let missingHtml = '';
+    if (!allReturned && activeSession) {
+      const missingItems = [];
+      Object.entries(activeSession.components || {}).forEach(([compName, givenQty]) => {
+        if (!givenQty) return;
+        // Map component type name to compStatus key
+        const csKey = Object.keys(t.compStatus).find(k => k.toLowerCase() === compName.toLowerCase().replace(/s$/, '') || k.toLowerCase() === compName.toLowerCase());
+        const cs = csKey ? t.compStatus[csKey] : null;
+        const returnedQty = cs ? (cs.returned || 0) : 0;
+        const missing = givenQty - returnedQty;
+        if (missing > 0) {
+          missingItems.push({ name: compName, given: givenQty, missing });
+        }
+      });
+      if (missingItems.length) {
+        missingHtml = `<div class="missing-comps-list">${missingItems.map(m =>
+          `<div class="missing-comp-row">
+            <div class="missing-comp-name">${escHtml(m.name)}</div>
+            <div class="missing-comp-detail">Given: ${m.given} &nbsp;·&nbsp; Missing: <span style="color:var(--red);font-weight:700;">${m.missing}</span></div>
+          </div>`
+        ).join('')}</div>`;
+      }
+    }
+
+    card.innerHTML = `
+      <div class="att-card-top">
+        <span class="att-table-name">${escHtml(t.lid.toUpperCase())}</span>
+        <span class="status-dot ${cls}"></span>
+      </div>
+      <div class="att-count">${allReturned ? 'All Returned' : 'Missing Components'}</div>
+      ${namesHtml}
+      ${missingHtml}
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function advanceStage(newStage) {
+  if (!activeSession) return;
+  if (stageTransitionInProgress) return;
+
+  stageTransitionInProgress = true;
+
+  activeSession.stage = newStage;
+  saveActiveToStorage();
+
+  const cmd =
+    newStage === 'unlocked'
+      ? 'start_experiment'
+      : 'allow_lock';
+
+  activeSession.tables.forEach(lid => {
+    sendCommand(lid, { cmd });
+  });
+
+  renderActiveSession();
+
+  setTimeout(() => {
+    stageTransitionInProgress = false;
+  }, 1500);
+}
+
+function formatDateStr(dateInput) {
+  // Accepts a Date object or an ISO date string (YYYY-MM-DD)
+  let d;
+  if (typeof dateInput === 'string' && dateInput.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    // Parse as local date to avoid UTC shift
+    const [y, m, day] = dateInput.split('-').map(Number);
+    d = new Date(y, m - 1, day);
+  } else {
+    d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  }
+  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function endSession() {
+  showConfirmModal(
+    'End Session',
+    'Are you sure you want to end the session for all tables?',
+    () => {
+      const ta = getAttendanceFromLockers();
+      // Collect students as objects {name, rollNumber, table}, dedup by rollNumber
+      const allStudents = [];
+      const _seenRolls = new Set();
+      ta.flatMap(t => t.names).forEach(s => {
+        const key = (typeof s === 'object' && s !== null) ? (s.rollNumber || s.name) : s;
+        if (!_seenRolls.has(key)) { _seenRolls.add(key); allStudents.push(s); }
+      });
+      const tableStatuses = {};
+      ta.forEach(t => {
+        const allOk = Object.values(t.compStatus).every(cs => cs.status==='ok'||cs.status==='idle'||cs.status==='unused');
+        tableStatuses[t.lid] = allOk ? 'returned' : 'missing';
+      });
+      const rowEntries = Object.entries(activeSession.components)
+        .filter(([,qty]) => qty > 0)
+        .map(([comp, qty]) => ({ comp, required: qty, detected: qty, state: 'ok', note: '' }));
+
+      const sessionDate = activeSession.expDate ? formatDateStr(activeSession.expDate) : formatDateStr(new Date());
+      const localReport = {
+        title:          activeSession.title,
+        course:         activeSession.course,
+        date:           sessionDate,
+        expDate:        activeSession.expDate || null,
+        timeFrom:       activeSession.timeFrom || null,
+        timeTo:         activeSession.timeTo   || null,
+        duration:       '—',
+        students:       allStudents,
+        rows:           rowEntries,
+        table_statuses: tableStatuses,
+      };
+
+      // Update in-memory list immediately so the UI reflects it without a round-trip
+      const dupIdx = reports.findIndex(r =>
+        r.title === localReport.title && r.course === localReport.course
+      );
+      if (dupIdx !== -1) reports.splice(dupIdx, 1);
+      reports.unshift(localReport);
+
+      // Persist to server — this is what survives page refresh and server restart
+      fetch('/api/reports/save', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(localReport),
+      }).catch(err => console.error('Failed to save report:', err));
+
+      // Save tables reference before resetting configuration
+      const activeTablesToClear = activeSession.tables;
+
+      // Wipe active runtime footprint memory structures cleanly 
+      activeSession = null;
+      saveActiveToStorage();
+
+      // Broadcast structural termination command payload to all running table hardware modules
+      activeTablesToClear.forEach(lid => {
+        sendCommand(lid, { cmd: 'lock' });
+        sendCommand(lid, { cmd: 'clear_session' }); // Tells TFT hardware explicitly to return to Screen 1
+      });
+
+      showPage('home');
+    },
+    'End Session'
+  );
+}
+
+function downloadAttendanceXLSX() {
+  if (!activeSession) return;
+  const ta = getAttendanceFromLockers();
+  const allStudents = [];
+  const _seenR = new Set();
+  ta.flatMap(t => t.names).forEach(s => {
+    const key = (typeof s === 'object' && s !== null) ? (s.rollNumber || s.name) : s;
+    if (!_seenR.has(key)) { _seenR.add(key); allStudents.push(s); }
+  });
+  const sessionDate = activeSession.expDate ? formatDateStr(activeSession.expDate) : formatDateStr(new Date());
+  const rep = {
+    title:   activeSession.title,
+    course:  activeSession.course,
+    date:    sessionDate,
+    duration:'—', students: allStudents, rows:[], table_statuses:{},
+  };
+  buildAndDownloadXLSX(rep);
+}
+
+// ════════════════════════════════════════════
+//  COMMANDS VIA API POST
+// ════════════════════════════════════════════
+function sendCommand(lockerId, body) {
+  fetch(`/api/command/${encodeURIComponent(lockerId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).catch(console.error);
+}
+
+// ════════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════════
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function capitalizeFirst(s) { return s ? s[0].toUpperCase() + s.slice(1) : ''; }
+
+// ════════════════════════════════════════════
+//  PROFILE MODAL
+// ════════════════════════════════════════════
+function openProfileModal() {
+  document.getElementById('p-lab-name').value = profileData.labName || '';
+  document.getElementById('p-room-no').value  = profileData.roomNo  || '';
+  document.getElementById('p-lab-engineer').value = profileData.labEngineer || '';
+  document.getElementById('p-cur-pw').value   = '';
+  document.getElementById('p-new-pw').value   = '';
+  document.getElementById('p-confirm-pw').value = '';
+  const msg = document.getElementById('profile-pw-msg');
+  msg.style.display = 'none'; msg.textContent = '';
+  renderProfileCourseChips();
+  document.getElementById('profile-modal-overlay').classList.add('open');
+}
+
+function closeProfileModal(e) {
+  if (e && e.target !== document.getElementById('profile-modal-overlay')) return;
+  document.getElementById('profile-modal-overlay').classList.remove('open');
+}
+
+function renderProfileCourseChips() {
+  const wrapper = document.getElementById('profile-course-chips');
+  wrapper.innerHTML = '';
+  courses.forEach((c, idx) => {
+    const chip = document.createElement('div');
+    chip.className = 'course-chip-del';
+    chip.innerHTML = `<span>${escHtml(c)}</span><button class="btn-del-c" onclick="profileDeleteCourse(${idx})">&times;</button>`;
+    wrapper.appendChild(chip);
+  });
+}
+
+function profileAddCourse() {
+  const inp = document.getElementById('p-new-course');
+  const c = (inp.value || '').trim();
+  if (!c) return;
+  if (!courses.includes(c)) {
+    courses.push(c);
+    saveCoursesToStorage();
+    repopulateCourseDropdown('');
+  }
+  inp.value = '';
+  renderProfileCourseChips();
+  renderCourseChipsManager();
+}
+
+function profileDeleteCourse(idx) {
+  showConfirmModal(
+    'Delete Course',
+    `Are you sure you want to delete the course "${courses[idx]}"?`,
+    () => {
+      courses.splice(idx, 1);
+      saveCoursesToStorage();
+      repopulateCourseDropdown('');
+      renderProfileCourseChips();
+      renderCourseChipsManager();
+    }
+  );
+}
+
+function saveProfileSettings() {
+  profileData.labName = document.getElementById('p-lab-name').value.trim();
+  profileData.roomNo  = document.getElementById('p-room-no').value.trim();
+  profileData.labEngineer = document.getElementById('p-lab-engineer').value.trim();
+  localStorage.setItem(STORE_PROFILE_KEY, JSON.stringify(profileData));
+  document.getElementById('profile-modal-overlay').classList.remove('open');
+  updateSubheaderInfo();
+}
+
+function changePassword() {
+  const cur    = document.getElementById('p-cur-pw').value;
+  const nw     = document.getElementById('p-new-pw').value;
+  const conf   = document.getElementById('p-confirm-pw').value;
+  const msgEl  = document.getElementById('profile-pw-msg');
+  msgEl.className = '';
+
+  if (!cur || !nw || !conf) {
+    showPwMsg('All password fields are required.', 'error'); return;
+  }
+  if (nw !== conf) {
+    showPwMsg('New passwords do not match.', 'error'); return;
+  }
+  if (nw.length < 4) {
+    showPwMsg('New password must be at least 4 characters.', 'error'); return;
+  }
+
+  fetch('/api/change-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ current_password: cur, new_password: nw }),
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      showPwMsg('Password changed successfully.', 'success');
+      document.getElementById('p-cur-pw').value = '';
+      document.getElementById('p-new-pw').value = '';
+      document.getElementById('p-confirm-pw').value = '';
+    } else {
+      showPwMsg(d.error || 'Failed to change password.', 'error');
+    }
+  })
+  .catch(() => showPwMsg('Server error. Check Flask route /api/change-password.', 'error'));
+}
+
+function showPwMsg(text, type) {
+  const el = document.getElementById('profile-pw-msg');
+  el.textContent = text;
+  el.className = 'profile-pw-msg profile-pw-msg-' + type;
+  el.style.display = 'block';
+}
+
+// ════════════════════════════════════════════
+//  SUBHEADER PROFILE INFO
+// ════════════════════════════════════════════
+function updateSubheaderInfo() {
+  const labName = profileData.labName || '';
+  const roomNo  = profileData.roomNo  || '';
+  const engineer = profileData.labEngineer || '';
+  const hasAny = labName || roomNo || engineer;
+  const html = hasAny ? `
+    <div class="band-profile-line1">
+      ${labName ? `<span class="band-profile-lab">${escHtml(labName)}</span>` : ''}
+      ${labName && roomNo ? `<span class="band-profile-sep">·</span>` : ''}
+      ${roomNo ? `<span class="band-profile-room">Room ${escHtml(roomNo)}</span>` : ''}
+    </div>
+    ${engineer ? `<div class="band-profile-engineer">${escHtml(engineer)}</div>` : ''}
+  ` : '';
+  ['home-band-profile','records-band-profile'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  });
+}
+
+// ════════════════════════════════════════════
+//  BOOT INITIALIZATION SETUP
+// ════════════════════════════════════════════
+loadPersistentState();
+updateSubheaderInfo();
+
+fetch('/api/lockers').then(r => r.json()).then(list => {
+  list.forEach(l => { lockers[l.locker_id] = { online: l.online, state: l.state || {} }; });
+  renderHome();
+  renderNewSessionForm(null);
+}).catch(()=>{
+  renderHome();
+  renderNewSessionForm(null);
+});
+
+fetch('/api/reports').then(r => r.json()).then(data => {
+  // Merge server records into any already-present in-memory records.
+  // Key on title+course so we never lose the richer browser-built version
+  // if endSession() already ran before this fetch completed.
+  const richness = r =>
+    (r.course ? 10 : 0) + (r.students ? r.students.length : 0) +
+    (r.rows ? r.rows.length : 0) + Object.keys(r.table_statuses || {}).length;
+
+  const merged = new Map();
+  // Seed with whatever is already in memory (e.g. from endSession before page load)
+  reports.forEach(r => { merged.set(r.title + '|||' + (r.course||'(none)'), r); });
+  // Layer in server records — only replace if server copy is richer
+  (data || []).forEach(r => {
+    const key = r.title + '|||' + (r.course||'(none)');
+    if (!merged.has(key) || richness(r) > richness(merged.get(key))) merged.set(key, r);
+  });
+  reports = [...merged.values()];
+  if (document.getElementById('page-records').classList.contains('active')) renderRecords();
+}).catch(() => {});
+
+// Auto-route execution target selection verification routing check
+if (activeSession) {
+   showPage('active-session');
+} else {
+   showPage('home');
+}
+</script>
+</body>
+</html>
